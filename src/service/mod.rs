@@ -12,6 +12,7 @@ type FlagConfigType = Arc<Mutex<HashMap<String, FlagConfig>>>;
 
 pub struct FlagService {
     flag_config: FlagConfigType,
+    #[allow(dead_code)]
     options: FlagServiceOptions,
 }
 
@@ -24,6 +25,7 @@ fn update_config(flag_config: FlagConfigType, config: HashMap<String, FlagConfig
             }
         }
         Err(e) => {
+            println!("Error updating config: {}", e);
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
