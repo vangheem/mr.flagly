@@ -23,8 +23,8 @@ let flag_service = FlagService::new(FlagServiceOptions {
     finder_type: mrflagly::service::types::FlagFinderType::URL,
     url: "https://path/to/hosted/json/file",
     refresh_interval: 600,
-    retriever_data: None,
-    retriever_env_var: None,
+    data: None,
+    env_var: None,
 })
 ```
 
