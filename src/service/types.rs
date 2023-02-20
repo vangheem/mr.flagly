@@ -6,16 +6,18 @@ pub struct FlagConfig {
 }
 
 #[derive(Clone)]
-pub enum FlagRetrieverType {
+pub enum FlagFinderType {
     URL,
     JSON,
+    ENVVAR,
     NULL,
 }
 
 #[derive(Clone)]
 pub struct FlagServiceOptions {
-    pub retriever_type: Option<FlagRetrieverType>,
-    pub retriever_url: Option<String>,
-    pub retriever_data: Option<String>,
+    pub finder_type: FlagFinderType,
+    pub url: Option<String>,
+    pub data: Option<String>,
+    pub env_var: Option<String>,
     pub refresh_interval: u64,
 }

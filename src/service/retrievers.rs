@@ -87,3 +87,26 @@ impl FlagRetriever for JSONStringRetriever {
         parse_json_config(&self.data)
     }
 }
+
+pub struct JSONEnvVarRetriever {
+    env_var_name: String,
+}
+
+impl JSONEnvVarRetriever {
+    pub fn new(env_var_name: String) -> JSONEnvVarRetriever {
+        JSONEnvVarRetriever {
+            env_var_name: env_var_name.to_string(),
+        }
+    }
+}
+
+impl FlagRetriever for JSONEnvVarRetriever {
+    fn retrieve(&self) -> Option<HashMap<String, FlagConfig>> {
+        let data = std::env::var(&self.env_var_name);
+        if data.is_err() {
+            print!("Error retrieving env var: {}", self.env_var_name);
+            return None;
+        }
+        parse_json_config(&data.unwrap())
+    }
+}

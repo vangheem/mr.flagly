@@ -1,38 +1,43 @@
 use std::collections::HashMap;
 
-use crate::service::{FlagService, FlagServiceOptions};
+use crate::service;
+use crate::service::types;
 use pyo3::prelude::*;
 
 #[pyclass]
-struct PythonFlagService {
-    flag_service: FlagService,
-}
-
-#[pyclass]
-struct PythonFlagOptions {
-    retriever_data: Option<String>,
+struct FlagService {
+    flag_service: service::FlagService,
 }
 
 #[pymethods]
-impl PythonFlagOptions {
+impl FlagService {
     #[new]
-    fn new(retriever_data: Option<String>) -> PyResult<PythonFlagOptions> {
-        Ok(PythonFlagOptions {
-            retriever_data: retriever_data,
-        })
-    }
-}
+    fn new(
+        url: Option<String>,
+        data: Option<String>,
+        env_var: Option<String>,
+        refresh_interval: Option<u64>,
+    ) -> PyResult<FlagService> {
+        let mut finder_type = types::FlagFinderType::NULL;
+        if url.is_some() {
+            finder_type = types::FlagFinderType::URL;
+        } else if data.is_some() {
+            finder_type = types::FlagFinderType::JSON;
+        } else if env_var.is_some() {
+            finder_type = types::FlagFinderType::ENVVAR;
+        }
 
-#[pymethods]
-impl PythonFlagService {
-    #[new]
-    fn new(options: &PythonFlagOptions) -> PyResult<PythonFlagService> {
-        Ok(PythonFlagService {
-            flag_service: FlagService::new(FlagServiceOptions {
-                retriever_type: Some(crate::service::types::FlagRetrieverType::JSON),
-                retriever_url: None,
-                refresh_interval: 0,
-                retriever_data: options.retriever_data.clone(),
+        let mut real_refresh_interval = 300;
+        if refresh_interval.is_some() {
+            real_refresh_interval = refresh_interval.unwrap();
+        }
+        Ok(FlagService {
+            flag_service: service::FlagService::new(service::FlagServiceOptions {
+                finder_type: finder_type,
+                url: url,
+                refresh_interval: real_refresh_interval,
+                data: data,
+                env_var: env_var,
             }),
         })
     }
@@ -51,8 +56,7 @@ impl PythonFlagService {
 #[pymodule]
 fn mrflagly(_py: Python, m: &PyModule) -> PyResult<()> {
     // m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
-    m.add_class::<PythonFlagService>()?;
-    m.add_class::<PythonFlagOptions>()?;
+    m.add_class::<FlagService>()?;
     // m.add_class(PythonFlagService);
     Ok(())
 }

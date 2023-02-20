@@ -30,16 +30,23 @@ fn update_config(flag_config: FlagConfigType, config: HashMap<String, FlagConfig
 }
 
 fn reload_config(flag_config: FlagConfigType, opts: &FlagServiceOptions) {
-    match opts.retriever_type {
-        Some(types::FlagRetrieverType::URL) => {
-            let retriever = URLRetriever::new(opts.retriever_url.as_ref().unwrap());
+    match opts.finder_type {
+        types::FlagFinderType::URL => {
+            let retriever = URLRetriever::new(opts.url.as_ref().unwrap());
             let config = retriever.retrieve();
             if config.is_some() {
                 update_config(flag_config, config.unwrap())
             }
         }
-        Some(types::FlagRetrieverType::JSON) => {
-            let retriever = JSONStringRetriever::new(opts.retriever_data.as_ref().unwrap().clone());
+        types::FlagFinderType::JSON => {
+            let retriever = JSONStringRetriever::new(opts.data.as_ref().unwrap().clone());
+            let config = retriever.retrieve();
+            if config.is_some() {
+                update_config(flag_config, config.unwrap())
+            }
+        }
+        types::FlagFinderType::ENVVAR => {
+            let retriever = JSONEnvVarRetriever::new(opts.env_var.as_ref().unwrap().clone());
             let config = retriever.retrieve();
             if config.is_some() {
                 update_config(flag_config, config.unwrap())
@@ -64,15 +71,13 @@ impl FlagService {
             options: options.clone(),
         };
 
-        if options.retriever_type.is_some() {
-            reload_config(Arc::clone(&svc.flag_config), &options.clone());
-            if options.refresh_interval > 0 {
-                let fc = Arc::clone(&svc.flag_config);
-                let opts = options.clone();
-                std::thread::spawn(move || {
-                    reload_config_forever(fc, &opts);
-                });
-            }
+        reload_config(Arc::clone(&svc.flag_config), &options.clone());
+        if options.refresh_interval > 0 {
+            let fc = Arc::clone(&svc.flag_config);
+            let opts = options.clone();
+            std::thread::spawn(move || {
+                reload_config_forever(fc, &opts);
+            });
         }
         svc
     }
@@ -135,9 +140,10 @@ mod tests {
 
         let flag_service = FlagService::new(crate::service::FlagServiceOptions {
             refresh_interval: 0,
-            retriever_type: Some(crate::types::FlagRetrieverType::URL),
-            retriever_url: Some(server.url("/").to_string()),
-            retriever_data: None,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
         });
 
         assert_eq!(
@@ -174,9 +180,10 @@ mod tests {
 
         let flag_service = FlagService::new(crate::service::FlagServiceOptions {
             refresh_interval: 1,
-            retriever_type: Some(crate::types::FlagRetrieverType::URL),
-            retriever_url: Some(server.url("/").to_string()),
-            retriever_data: None,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
         });
 
         assert_eq!(flag_service.enabled("feature", false, None), true);

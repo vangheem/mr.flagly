@@ -1,3 +1,6 @@
+initialize:
+	pip install maturin
+
 build:
 	maturin build
 
