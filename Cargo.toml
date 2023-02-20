@@ -1,0 +1,20 @@
+[package]
+name = "mrflagly"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "mrflagly"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/bin/testflags.rs"
+
+[dependencies]
+httptest = "0.15.4"
+json = "0.12.4"
+pyo3 = { version = "0.18.0", features = ["extension-module"] }
+ureq = "2.6.2"

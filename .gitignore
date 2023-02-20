@@ -1,0 +1,4 @@
+/target
+env
+pyvenv.cfg
+.vscode
