@@ -10,7 +10,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-license = "MIT"
+# license = "MIT"
 readme = "README.md"
 description = "No nonsense feature flagging system"
 repository = "https://github.com/vangheem/mr.flagly"

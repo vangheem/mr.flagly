@@ -2,7 +2,7 @@
 name = "mrflagly"
 version = "0.1.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 description = "No nonsense feature flagging system"
 homepage = "https://github.com/vangheem/mr.flagly"
 repository = "https://github.com/vangheem/mr.flagly"
@@ -13,10 +13,6 @@ readme = "README.md"
 name = "mrflagly"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
-
-[[bin]]
-name = "main"
-path = "src/bin/testflags.rs"
 
 [dependencies]
 httptest = "0.15.4"
