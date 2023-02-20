@@ -99,7 +99,9 @@ impl FlagService {
             {
                 let ucontext = context.unwrap();
                 for (key, value) in config.variants.as_ref().unwrap() {
-                    if ucontext.contains_key(key) && ucontext.get(key) == Some(&value) {
+                    if ucontext.contains_key(key)
+                        && value.iter().any(|v| v == ucontext.get(key).unwrap())
+                    {
                         return true;
                     }
                 }
@@ -131,7 +133,7 @@ mod tests {
     "feature_variant": {
         "rollout": 0,
         "variants": {
-            "user_id": "123"
+            "user_id": ["123"]
         }
     }
 }"#,

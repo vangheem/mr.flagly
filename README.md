@@ -47,3 +47,23 @@ flag_service = mrflagly.FlagService(data=json.dumps({"feature_x": {"rollout": 10
 if flag_service.enabled("feature_x", False, None):
     # do something
 ```
+
+
+## JSON format
+
+The format of your JSON feature flagging data that you use must be in the following format:
+
+```
+{
+    "my_feature": {
+        "rollout": 100
+    },
+    "my_feature_with_variants": {
+        "rollout": 0,
+        "variants" {
+            "user_id": ["123"],
+            "company_id": ["123"]
+        }
+    }
+}
+```

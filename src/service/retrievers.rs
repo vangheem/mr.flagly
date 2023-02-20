@@ -17,12 +17,13 @@ fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
     for (key, value) in json.entries() {
         let rollout = value["rollout"].as_u8().unwrap();
 
-        let mut variants: Option<HashMap<String, String>> = None;
+        // let mut variants: Option<HashMap<String, Vec<String>> = None;
+        let mut variants: Option<HashMap<String, Vec<String>>> = None;
         if value.has_key("variants") {
             variants = Some(
                 value["variants"]
                     .entries()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .map(|(k, v)| (k.to_string(), v.members().map(|x| x.to_string()).collect()))
                     .collect(),
             );
         }
