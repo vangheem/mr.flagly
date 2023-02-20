@@ -4,7 +4,7 @@ Feature flagging should not be so complicated.
 
 Mr Flagly is a decentralized feature flagging system written in Rust with bindings for other languages.
 
-It does not depend on a costly third party service or require you to deploy services and databases to manage.
+It does not depend on third party services or require you to deploy services and databases to manage.
 
 Supported feature flag definition sources:
 
@@ -51,7 +51,7 @@ if flag_service.enabled("feature_x", False, None):
 
 ## JSON format
 
-The format of your JSON feature flagging data that you use must be in the following format:
+JSON format for feature flag data:
 
 ```
 {
