@@ -1,5 +1,7 @@
 pub mod retrievers;
+use std::collections::hash_map::DefaultHasher;
 pub mod types;
+use std::hash::Hasher;
 
 pub use retrievers::*;
 use std::{
@@ -12,8 +14,6 @@ type FlagConfigType = Arc<Mutex<HashMap<String, FlagConfig>>>;
 
 pub struct FlagService {
     flag_config: FlagConfigType,
-    #[allow(dead_code)]
-    options: FlagServiceOptions,
 }
 
 fn update_config(flag_config: FlagConfigType, config: HashMap<String, FlagConfig>) {
@@ -70,7 +70,6 @@ impl FlagService {
         let real_config = Arc::new(Mutex::new(HashMap::new()));
         let svc = FlagService {
             flag_config: Arc::clone(&real_config),
-            options: options.clone(),
         };
 
         reload_config(Arc::clone(&svc.flag_config), &options.clone());
@@ -93,8 +92,23 @@ impl FlagService {
         let binding = self.flag_config.lock().unwrap();
         let config = binding.get(name);
         if let Some(config) = config {
-            if config.rollout > 0 {
+            if config.rollout >= 100 {
                 return true;
+            } else if config.rollout > 0 {
+                let mut hasher = DefaultHasher::new();
+                hasher.write(name.as_bytes());
+                if context.is_some() {
+                    for (key, value) in context.as_ref().unwrap() {
+                        hasher.write(key.as_bytes());
+                        hasher.write(value.as_bytes());
+                    }
+                }
+                let hash = hasher.finish();
+                if let Ok(bucket) = u8::try_from(hash % 100) {
+                    return bucket < config.rollout;
+                } else {
+                    print!("Error converting hash to u8: {}", hash)
+                }
             } else if context.is_some()
                 && config.variants.is_some()
                 && config.variants.as_ref().unwrap().len() > 0
@@ -169,6 +183,44 @@ mod tests {
                 Some(HashMap::from(
                     [("user_id".to_string(), "1234".to_string()),]
                 ))
+            ),
+            false
+        );
+    }
+
+    #[test]
+    fn it_hashes_context_rollout() {
+        let server = SERVER_POOL.get_server();
+        server.expect(
+            Expectation::matching(any()).respond_with(status_code(200).body(
+                r#"
+{"feature": {"rollout": 50}}"#,
+            )),
+        );
+
+        let flag_service = FlagService::new(crate::service::FlagServiceOptions {
+            refresh_interval: 0,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
+        });
+
+        assert_eq!(
+            flag_service.enabled(
+                "feature",
+                false,
+                Some(HashMap::from(
+                    [("user_id".to_string(), "1234".to_string()),]
+                ))
+            ),
+            true
+        );
+        assert_eq!(
+            flag_service.enabled(
+                "feature",
+                true,
+                Some(HashMap::from([("user_id".to_string(), "123".to_string())]))
             ),
             false
         );
