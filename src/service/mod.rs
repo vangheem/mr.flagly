@@ -16,17 +16,36 @@ pub struct FlagService {
     flag_config: FlagConfigType,
 }
 
+fn wait_for_lock(
+    flag_config: &FlagConfigType,
+) -> Option<std::sync::MutexGuard<'_, HashMap<String, FlagConfig>>> {
+    let mut i = 0;
+    loop {
+        match flag_config.try_lock() {
+            Ok(lock) => {
+                return Some(lock);
+            }
+            Err(_) => {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                i += 1;
+                if i > 100 {
+                    return None;
+                }
+            }
+        }
+    }
+}
+
 fn update_config(flag_config: FlagConfigType, config: HashMap<String, FlagConfig>) {
-    match flag_config.lock() {
-        Ok(mut fc) => {
+    match wait_for_lock(&flag_config) {
+        Some(mut fc) => {
             fc.clear();
             for (key, value) in config {
                 fc.insert(key, value);
             }
         }
-        Err(e) => {
-            println!("Error updating config: {}", e);
-            std::thread::sleep(std::time::Duration::from_millis(1));
+        None => {
+            println!("Could not get lock");
         }
     }
 }
@@ -83,14 +102,24 @@ impl FlagService {
         svc
     }
 
+    pub fn get_flag_config(&self) -> HashMap<String, FlagConfig> {
+        match wait_for_lock(&self.flag_config) {
+            Some(fc) => fc.clone(),
+            None => {
+                println!("Could not get lock");
+                return HashMap::new();
+            }
+        }
+    }
+
     pub fn enabled(
         &self,
         name: &str,
         default: bool,
         context: Option<HashMap<String, String>>,
     ) -> bool {
-        let binding = self.flag_config.lock().unwrap();
-        let config = binding.get(name);
+        let fc = self.get_flag_config();
+        let config = fc.get(name);
         if let Some(config) = config {
             if config.rollout >= 100 {
                 return true;
@@ -107,7 +136,7 @@ impl FlagService {
                 if let Ok(bucket) = u8::try_from(hash % 100) {
                     return bucket < config.rollout;
                 } else {
-                    print!("Error converting hash to u8: {}", hash)
+                    println!("Error converting hash to u8: {}", hash)
                 }
             } else if context.is_some()
                 && config.variants.is_some()
