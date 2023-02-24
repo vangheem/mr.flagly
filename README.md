@@ -41,19 +41,28 @@ if flag_service.enabled("feature_x", false /* default value */, Some(HashMap::fr
 
 ```python
 import mrflagly
-import json
 
-flag_service = mrflagly.FlagService(data=json.dumps({"feature_x": {"rollout": 100}}))
-if flag_service.enabled("feature_x", False, None):
+flag_service = mrflagly.FlagService(url="https://path/to/hosted/json/file")
+if flag_service.enabled("feature_x", default=False, context={"foo": "bar"}):
     # do something
 ```
+
+
+## FlagService constructor parameters
+
+- `finder_type`: (NULL, URL, JSON, ENVVAR)
+- `url`: URL to download feature flag json data
+- `refresh_interval`: How often to poll the feature flag data endpoint
+- `data`: Instead of hosting feature flag data from URL, you can provide it as a json blob
+- `env_var`: Provide feature flag data in environment variable
+
 
 
 ## JSON format
 
 JSON format for feature flag data:
 
-```
+```json
 {
     "my_feature": {
         "rollout": 100
@@ -66,4 +75,33 @@ JSON format for feature flag data:
         }
     }
 }
+```
+
+
+## Example activating for a particular customer
+
+JSON config data:
+
+```json
+{
+    "feature": {
+        "rollout": 0,
+        "variants": {
+            "customer_id": ["123"]
+        }
+    }
+}
+```
+
+
+Usage:
+```python
+import mrflagly
+import json
+
+flag_service = mrflagly.FlagService(
+    data=json.dumps({"feature": {"rollout": 0, "variants": {"customer_id": ["123"]}}}))
+
+if flag_service.enabled("feature_x", default=False, context={"customer_id": "123"}):
+    # do something
 ```

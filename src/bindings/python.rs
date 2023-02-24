@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use crate::service;
 use crate::service::types;
 use pyo3::prelude::*;
+use std::collections::HashMap;
 
 #[pyclass]
 struct FlagService {

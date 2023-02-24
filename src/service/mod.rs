@@ -1,13 +1,13 @@
 pub mod retrievers;
 use std::collections::hash_map::DefaultHasher;
 pub mod types;
-use std::hash::Hasher;
-
 pub use retrievers::*;
+use std::hash::Hasher;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
+
 pub use types::*;
 
 type FlagConfigType = Arc<Mutex<HashMap<String, FlagConfig>>>;
