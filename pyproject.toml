@@ -15,3 +15,6 @@ readme = "README.md"
 description = "No nonsense feature flagging system"
 repository = "https://github.com/vangheem/mr.flagly"
 homepage = "https://github.com/vangheem/mr.flagly"
+authors = [
+    {"name" = "Nathan Van Gheem", "email" = "vangheem@gmail.com>"},
+]
