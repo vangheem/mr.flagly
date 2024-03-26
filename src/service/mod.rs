@@ -148,6 +148,8 @@ impl FlagService {
                         && value.iter().any(|v| v == ucontext.get(key).unwrap())
                     {
                         return true;
+                    } else {
+                        return false;
                     }
                 }
             }
