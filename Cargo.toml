@@ -1,6 +1,6 @@
 [package]
 name = "mrflagly"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
 license = "MIT"
 description = "No nonsense feature flagging system"
@@ -11,11 +11,15 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "mrflagly"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]
 httptest = "0.15.4"
 json = "0.12.4"
-pyo3 = { version = "0.18.0", features = ["extension-module"] }
+pyo3 = { version = "0.18.0", features = ["extension-module"], optional = true }
 ureq = "2.6.2"
+
+[features]
+default = ["python"]
+python = ["dep:pyo3"]
