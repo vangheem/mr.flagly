@@ -148,8 +148,6 @@ impl FlagService {
                         && value.iter().any(|v| v == ucontext.get(key).unwrap())
                     {
                         return true;
-                    } else {
-                        return false;
                     }
                 }
             }
@@ -215,6 +213,54 @@ mod tests {
                     [("user_id".to_string(), "1234".to_string()),]
                 ))
             ),
+            false
+        );
+    }
+
+    #[test]
+    fn it_handles_multiple_variants() {
+        let server = SERVER_POOL.get_server();
+        server.expect(
+            Expectation::matching(any()).respond_with(status_code(200).body(
+                r#"
+{
+    "feature_variant": {
+        "rollout": 0,
+        "variants": {
+            "user_id": ["123"],
+            "env": ["dev"]
+        }
+    }
+}"#,
+            )),
+        );
+
+        let flag_service = FlagService::new(crate::service::FlagServiceOptions {
+            refresh_interval: 0,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
+        });
+
+        assert_eq!(
+            flag_service.enabled(
+                "feature_variant",
+                false,
+                Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
+            ),
+            true
+        );
+        assert_eq!(
+            flag_service.enabled(
+                "feature_variant",
+                false,
+                Some(HashMap::from([("env".to_string(), "dev".to_string()),]))
+            ),
+            true
+        );
+        assert_eq!(
+            flag_service.enabled("feature_variant", false, Some(HashMap::new())),
             false
         );
     }
