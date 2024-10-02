@@ -6,24 +6,43 @@ pub trait FlagRetriever {
 }
 
 fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
-    let json_parsed = json::parse(&json);
+    let json_parsed = serde_json::from_str(&json);
     if json_parsed.is_err() {
         print!("Error parsing JSON: {}", json);
         return None;
     }
-    let json = json_parsed.unwrap();
+    let json: serde_json::Value = json_parsed.unwrap();
+    let json = json
+        .as_object()
+        .expect("Expected a JSON object at the root");
 
     let mut config: HashMap<String, FlagConfig> = HashMap::new();
-    for (key, value) in json.entries() {
-        let rollout = value["rollout"].as_u8().unwrap();
+    for (key, value) in json {
+        let rollout = value["rollout"].as_u64().unwrap() as u8;
 
         // let mut variants: Option<HashMap<String, Vec<String>> = None;
         let mut variants: Option<HashMap<String, Vec<String>>> = None;
-        if value.has_key("variants") {
+        if let Some(json_variants) = value.get("variants") {
+            let json_variants = json_variants
+                .as_object()
+                .expect("Expected `variants` to be an onject");
             variants = Some(
-                value["variants"]
-                    .entries()
-                    .map(|(k, v)| (k.to_string(), v.members().map(|x| x.to_string()).collect()))
+                json_variants
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            k.to_string(),
+                            v.as_array()
+                                .expect("Variant should be a list of values")
+                                .iter()
+                                .map(|x| {
+                                    x.as_str()
+                                        .expect("Variant values should be strings")
+                                        .to_string()
+                                })
+                                .collect(),
+                        )
+                    })
                     .collect(),
             );
         }
