@@ -14,7 +14,6 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7]
-        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         # target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
     steps:
       - uses: actions/checkout@v3
@@ -25,12 +24,12 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.target }}-${{ matrix.python }}
+          name: wheels-linux-${{ matrix.target }}
           path: dist
 
   windows:
@@ -38,7 +37,6 @@ jobs:
     strategy:
       matrix:
         target: [x64, x86]
-        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -49,11 +47,11 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.target }}-${{ matrix.python }}
+          name: wheels-windows-${{ matrix.target }}
           path: dist
 
   macos:
@@ -61,7 +59,6 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, aarch64]
-        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -71,11 +68,11 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter --universal2
+          args: --release --out dist --universal2
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.target }}-${{ matrix.python }}
+          name: wheels-macos-${{ matrix.target }}
           path: dist
 
   release-pypi:

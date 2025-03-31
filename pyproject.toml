@@ -1,10 +1,10 @@
 [build-system]
-requires = ["maturin>=0.14,<0.15"]
+requires = ["maturin>=1,<2"]
 build-backend = "maturin"
 
 [project]
 name = "mrflagly"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
@@ -16,5 +16,5 @@ description = "No nonsense feature flagging system"
 repository = "https://github.com/vangheem/mr.flagly"
 homepage = "https://github.com/vangheem/mr.flagly"
 authors = [
-    {"name" = "Nathan Van Gheem", "email" = "vangheem@gmail.com>"},
+    {name = "Nathan Van Gheem", email = "vangheem@gmail.com>"},
 ]
