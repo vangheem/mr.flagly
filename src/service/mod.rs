@@ -55,22 +55,22 @@ fn reload_config(flag_config: FlagConfigType, opts: &FlagServiceOptions) {
         types::FlagFinderType::URL => {
             let retriever = URLRetriever::new(opts.url.as_ref().unwrap());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         types::FlagFinderType::JSON => {
             let retriever = JSONStringRetriever::new(opts.data.as_ref().unwrap().clone());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         types::FlagFinderType::ENVVAR => {
             let retriever = JSONEnvVarRetriever::new(opts.env_var.as_ref().unwrap().clone());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         _ => {}
@@ -107,7 +107,7 @@ impl FlagService {
             Some(fc) => fc.clone(),
             None => {
                 println!("Could not get lock");
-                return HashMap::new();
+                HashMap::new()
             }
         }
     }
@@ -126,8 +126,8 @@ impl FlagService {
             } else if config.rollout > 0 {
                 let mut hasher = DefaultHasher::new();
                 hasher.write(name.as_bytes());
-                if context.is_some() {
-                    for (key, value) in context.as_ref().unwrap() {
+                if let Some(context) = context {
+                    for (key, value) in context {
                         hasher.write(key.as_bytes());
                         hasher.write(value.as_bytes());
                     }
@@ -138,11 +138,10 @@ impl FlagService {
                 } else {
                     println!("Error converting hash to u8: {}", hash)
                 }
-            } else if context.is_some()
+            } else if let Some(ucontext) = context
                 && config.variants.is_some()
-                && config.variants.as_ref().unwrap().len() > 0
+                && !config.variants.as_ref().unwrap().is_empty()
             {
-                let ucontext = context.unwrap();
                 for (key, value) in config.variants.as_ref().unwrap() {
                     if ucontext.contains_key(key)
                         && value.iter().any(|v| v == ucontext.get(key).unwrap())
@@ -152,7 +151,7 @@ impl FlagService {
                 }
             }
         }
-        return default;
+        default
     }
 }
 
@@ -161,7 +160,7 @@ mod tests {
     use crate::service::FlagService;
     use httptest::matchers::any;
     use httptest::responders::status_code;
-    use httptest::{cycle, Expectation, ServerPool};
+    use httptest::{Expectation, ServerPool, cycle};
     static SERVER_POOL: ServerPool = ServerPool::new(2);
     use std::collections::HashMap;
 
@@ -193,28 +192,19 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(
-            flag_service.enabled("feature_rolled_out", false, None),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from(
-                    [("user_id".to_string(), "1234".to_string()),]
-                ))
-            ),
-            false
-        );
+        assert!(flag_service.enabled("feature_rolled_out", false, None));
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
+        ));
+        assert!(!flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from(
+                [("user_id".to_string(), "1234".to_string()),]
+            ))
+        ));
     }
 
     #[test]
@@ -243,26 +233,17 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("env".to_string(), "dev".to_string()),]))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled("feature_variant", false, Some(HashMap::new())),
-            false
-        );
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
+        ));
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("env".to_string(), "dev".to_string()),]))
+        ));
+        assert!(!flag_service.enabled("feature_variant", false, Some(HashMap::new())));
     }
 
     #[test]
@@ -283,24 +264,18 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(
-            flag_service.enabled(
-                "feature",
-                false,
-                Some(HashMap::from(
-                    [("user_id".to_string(), "1234".to_string()),]
-                ))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature",
-                true,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string())]))
-            ),
-            false
-        );
+        assert!(flag_service.enabled(
+            "feature",
+            false,
+            Some(HashMap::from(
+                [("user_id".to_string(), "1234".to_string()),]
+            ))
+        ));
+        assert!(!flag_service.enabled(
+            "feature",
+            true,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string())]))
+        ));
     }
 
     #[test]
@@ -319,11 +294,11 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(flag_service.enabled("feature", false, None), true);
+        assert!(flag_service.enabled("feature", false, None));
 
         std::thread::sleep(
             std::time::Duration::from_secs(1) + std::time::Duration::from_millis(100),
         );
-        assert_eq!(flag_service.enabled("feature", false, None), false);
+        assert!(!flag_service.enabled("feature", false, None));
     }
 }

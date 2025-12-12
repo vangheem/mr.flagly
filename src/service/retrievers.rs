@@ -6,7 +6,7 @@ pub trait FlagRetriever {
 }
 
 fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
-    let json_parsed = serde_json::from_str(&json);
+    let json_parsed = serde_json::from_str(json);
     if json_parsed.is_err() {
         print!("Error parsing JSON: {}", json);
         return None;
@@ -47,13 +47,7 @@ fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
             );
         }
 
-        config.insert(
-            key.to_string(),
-            FlagConfig {
-                rollout,
-                variants: variants,
-            },
-        );
+        config.insert(key.to_string(), FlagConfig { rollout, variants });
     }
 
     Some(config)
@@ -84,7 +78,7 @@ impl FlagRetriever for URLRetriever {
             }
             Err(e) => {
                 println!("Error: {}", e);
-                return None;
+                None
             }
         }
     }

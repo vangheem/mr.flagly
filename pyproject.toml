@@ -18,3 +18,4 @@ homepage = "https://github.com/vangheem/mr.flagly"
 authors = [
     {name = "Nathan Van Gheem", email = "vangheem@gmail.com>"},
 ]
+dynamic = ["version"]
