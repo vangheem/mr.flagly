@@ -26,17 +26,15 @@ impl FlagService {
             finder_type = types::FlagFinderType::ENVVAR;
         }
 
-        let mut real_refresh_interval = 300;
-        if refresh_interval.is_some() {
-            real_refresh_interval = refresh_interval.unwrap();
-        }
+        let real_refresh_interval = refresh_interval.unwrap_or(300);
+
         Ok(FlagService {
             flag_service: service::FlagService::new(service::FlagServiceOptions {
-                finder_type: finder_type,
-                url: url,
+                finder_type,
+                url,
                 refresh_interval: real_refresh_interval,
-                data: data,
-                env_var: env_var,
+                data,
+                env_var,
             }),
         })
     }
@@ -53,9 +51,7 @@ impl FlagService {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn mrflagly(_py: Python, m: &PyModule) -> PyResult<()> {
-    // m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+fn mrflagly(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<FlagService>()?;
-    // m.add_class(PythonFlagService);
     Ok(())
 }
