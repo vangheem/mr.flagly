@@ -11,11 +11,12 @@ struct FlagService {
 #[pymethods]
 impl FlagService {
     #[new]
+    #[pyo3(signature = (url=None, data=None, env_var=None, refresh_interval=300))]
     fn new(
         url: Option<String>,
         data: Option<String>,
         env_var: Option<String>,
-        refresh_interval: Option<u64>,
+        refresh_interval: u64,
     ) -> PyResult<FlagService> {
         let mut finder_type = types::FlagFinderType::NULL;
         if url.is_some() {
@@ -26,19 +27,18 @@ impl FlagService {
             finder_type = types::FlagFinderType::ENVVAR;
         }
 
-        let real_refresh_interval = refresh_interval.unwrap_or(300);
-
         Ok(FlagService {
             flag_service: service::FlagService::new(service::FlagServiceOptions {
                 finder_type,
                 url,
-                refresh_interval: real_refresh_interval,
+                refresh_interval,
                 data,
                 env_var,
             }),
         })
     }
 
+    #[pyo3(signature = (name, default=false, context=None))]
     pub fn enabled(
         &self,
         name: &str,

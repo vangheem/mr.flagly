@@ -1,6 +1,6 @@
 [package]
 name = "mrflagly"
-version = "0.2.12"
+version = "0.2.14"
 edition = "2024"
 license = "MIT"
 description = "No nonsense feature flagging system"
