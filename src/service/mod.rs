@@ -120,38 +120,49 @@ impl FlagService {
     ) -> bool {
         let fc = self.get_flag_config();
         let config = fc.get(name);
-        if let Some(config) = config {
-            if config.rollout >= 100 {
-                return true;
-            } else if config.rollout > 0 {
-                let mut hasher = DefaultHasher::new();
-                hasher.write(name.as_bytes());
-                if let Some(context) = context {
-                    for (key, value) in context {
-                        hasher.write(key.as_bytes());
-                        hasher.write(value.as_bytes());
-                    }
+
+        // If not configured, use default
+        let Some(config) = config else { return default };
+
+        // Evaluate if flag matches rollout
+        if config.rollout >= 100 {
+            return true;
+        }
+        if config.rollout > 0 {
+            let mut hasher = DefaultHasher::new();
+            hasher.write(name.as_bytes());
+            if let Some(ref context) = context {
+                for (key, value) in context {
+                    hasher.write(key.as_bytes());
+                    hasher.write(value.as_bytes());
                 }
-                let hash = hasher.finish();
-                if let Ok(bucket) = u8::try_from(hash % 100) {
-                    return bucket < config.rollout;
-                } else {
-                    println!("Error converting hash to u8: {}", hash)
+            }
+            let hash = hasher.finish();
+            if let Ok(bucket) = u8::try_from(hash % 100) {
+                if bucket < config.rollout {
+                    return true;
                 }
-            } else if let Some(ucontext) = context
-                && config.variants.is_some()
-                && !config.variants.as_ref().unwrap().is_empty()
-            {
-                for (key, value) in config.variants.as_ref().unwrap() {
-                    if ucontext.contains_key(key)
-                        && value.iter().any(|v| v == ucontext.get(key).unwrap())
-                    {
-                        return true;
-                    }
+            } else {
+                println!("Error converting hash to u8: {}", hash)
+            }
+        }
+
+        // Evaluate if flag matches any variant
+        if let Some(ucontext) = context
+            && config.variants.is_some()
+            && !config.variants.as_ref().unwrap().is_empty()
+        {
+            for (key, value) in config.variants.as_ref().unwrap() {
+                if ucontext.contains_key(key)
+                    && value.iter().any(|v| v == ucontext.get(key).unwrap())
+                {
+                    return true;
                 }
             }
         }
-        default
+
+        // No matches, return false
+        false
     }
 }
 
@@ -300,5 +311,95 @@ mod tests {
             std::time::Duration::from_secs(1) + std::time::Duration::from_millis(100),
         );
         assert!(!flag_service.enabled("feature", false, None));
+    }
+
+    #[test]
+    fn it_respects_default() {
+        let server = SERVER_POOL.get_server();
+        server.expect(
+            Expectation::matching(any()).respond_with(status_code(200).body(
+                r#"
+{
+    "enabled_flag": {
+        "rollout": 100
+    },
+    "disabled_flag": {
+        "rollout": 0
+    }
+}"#,
+            )),
+        );
+
+        let flag_service = FlagService::new(crate::service::FlagServiceOptions {
+            refresh_interval: 0,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
+        });
+
+        // Default false used
+        assert_eq!(
+            flag_service.enabled("undefined_flag", false, Some(HashMap::default())),
+            false
+        );
+        // Default true used
+        assert_eq!(
+            flag_service.enabled("undefined_flag", true, Some(HashMap::default())),
+            true
+        );
+        // Default false, ignored
+        assert_eq!(
+            flag_service.enabled("enabled_flag", false, Some(HashMap::default())),
+            true
+        );
+        // Default true, ignored
+        assert_eq!(
+            flag_service.enabled("disabled_flag", true, Some(HashMap::default())),
+            false
+        );
+    }
+
+    #[test]
+    fn it_evaluates_rollout_and_variant() {
+        let server = SERVER_POOL.get_server();
+        server.expect(
+            Expectation::matching(any()).respond_with(status_code(200).body(
+                r#"
+{
+    "my_flag": {
+        "rollout": 1,
+        "variants": {
+            "env": ["envabled"]
+        }
+    }
+}"#,
+            )),
+        );
+
+        let flag_service = FlagService::new(crate::service::FlagServiceOptions {
+            refresh_interval: 0,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
+        });
+
+        assert_eq!(
+            flag_service.enabled(
+                "my_flag",
+                false,
+                Some(HashMap::from([("env".to_string(), "envabled".to_string())]))
+            ),
+            true
+        );
+        assert_eq!(
+            flag_service.enabled(
+                "my_flag",
+                false,
+                Some(HashMap::from([("env".to_string(), "no".to_string())]))
+            ),
+            false
+        );
     }
 }
