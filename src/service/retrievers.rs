@@ -6,7 +6,7 @@ pub trait FlagRetriever {
 }
 
 fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
-    let json_parsed = json::parse(&json);
+    let json_parsed = json::parse(json);
     if json_parsed.is_err() {
         print!("Error parsing JSON: {}", json);
         return None;
@@ -32,7 +32,7 @@ fn parse_json_config(json: &str) -> Option<HashMap<String, FlagConfig>> {
             key.to_string(),
             FlagConfig {
                 rollout,
-                variants: variants,
+                variants,
             },
         );
     }
@@ -65,7 +65,7 @@ impl FlagRetriever for URLRetriever {
             }
             Err(e) => {
                 println!("Error: {}", e);
-                return None;
+                None
             }
         }
     }

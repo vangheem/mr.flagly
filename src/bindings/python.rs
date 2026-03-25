@@ -32,11 +32,11 @@ impl FlagService {
         }
         Ok(FlagService {
             flag_service: service::FlagService::new(service::FlagServiceOptions {
-                finder_type: finder_type,
-                url: url,
+                finder_type,
+                url,
                 refresh_interval: real_refresh_interval,
-                data: data,
-                env_var: env_var,
+                data,
+                env_var,
             }),
         })
     }

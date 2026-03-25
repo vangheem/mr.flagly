@@ -55,22 +55,22 @@ fn reload_config(flag_config: FlagConfigType, opts: &FlagServiceOptions) {
         types::FlagFinderType::URL => {
             let retriever = URLRetriever::new(opts.url.as_ref().unwrap());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         types::FlagFinderType::JSON => {
             let retriever = JSONStringRetriever::new(opts.data.as_ref().unwrap().clone());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         types::FlagFinderType::ENVVAR => {
             let retriever = JSONEnvVarRetriever::new(opts.env_var.as_ref().unwrap().clone());
             let config = retriever.retrieve();
-            if config.is_some() {
-                update_config(flag_config, config.unwrap())
+            if let Some(config) = config {
+                update_config(flag_config, config)
             }
         }
         _ => {}
@@ -107,7 +107,7 @@ impl FlagService {
             Some(fc) => fc.clone(),
             None => {
                 println!("Could not get lock");
-                return HashMap::new();
+                HashMap::new()
             }
         }
     }
@@ -120,39 +120,41 @@ impl FlagService {
     ) -> bool {
         let fc = self.get_flag_config();
         let config = fc.get(name);
-        if let Some(config) = config {
-            if config.rollout >= 100 {
-                return true;
-            } else if config.rollout > 0 {
-                let mut hasher = DefaultHasher::new();
-                hasher.write(name.as_bytes());
-                if context.is_some() {
-                    for (key, value) in context.as_ref().unwrap() {
-                        hasher.write(key.as_bytes());
-                        hasher.write(value.as_bytes());
-                    }
+
+        // Return default if undefined in config
+        let Some(config) = config else { return default };
+
+        if config.rollout >= 100 {
+            return true;
+        } else if config.rollout > 0 {
+            let mut hasher = DefaultHasher::new();
+            hasher.write(name.as_bytes());
+            if context.is_some() {
+                for (key, value) in context.as_ref().unwrap() {
+                    hasher.write(key.as_bytes());
+                    hasher.write(value.as_bytes());
                 }
-                let hash = hasher.finish();
-                if let Ok(bucket) = u8::try_from(hash % 100) {
-                    return bucket < config.rollout;
-                } else {
-                    println!("Error converting hash to u8: {}", hash)
-                }
-            } else if context.is_some()
-                && config.variants.is_some()
-                && config.variants.as_ref().unwrap().len() > 0
-            {
-                let ucontext = context.unwrap();
-                for (key, value) in config.variants.as_ref().unwrap() {
-                    if ucontext.contains_key(key)
-                        && value.iter().any(|v| v == ucontext.get(key).unwrap())
-                    {
-                        return true;
-                    }
+            }
+            let hash = hasher.finish();
+            if let Ok(bucket) = u8::try_from(hash % 100) {
+                return bucket < config.rollout;
+            } else {
+                println!("Error converting hash to u8: {}", hash)
+            }
+        } else if context.is_some()
+            && config.variants.is_some()
+            && !config.variants.as_ref().unwrap().is_empty()
+        {
+            let ucontext = context.unwrap();
+            for (key, value) in config.variants.as_ref().unwrap() {
+                if ucontext.contains_key(key)
+                    && value.iter().any(|v| v == ucontext.get(key).unwrap())
+                {
+                    return true;
                 }
             }
         }
-        return default;
+        false
     }
 }
 
@@ -193,26 +195,64 @@ mod tests {
             data: None,
         });
 
+        assert!(flag_service.enabled("feature_rolled_out", false, None));
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
+        ));
+        assert!(!flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from(
+                [("user_id".to_string(), "1234".to_string()),]
+            ))
+        ));
+    }
+
+    #[test]
+    fn it_respects_default() {
+        let server = SERVER_POOL.get_server();
+        server.expect(
+            Expectation::matching(any()).respond_with(status_code(200).body(
+                r#"
+{
+    "enabled_flag": {
+        "rollout": 100
+    },
+    "disabled_flag": {
+        "rollout": 0
+    }
+}"#,
+            )),
+        );
+
+        let flag_service = FlagService::new(crate::service::FlagServiceOptions {
+            refresh_interval: 0,
+            finder_type: crate::types::FlagFinderType::URL,
+            url: Some(server.url("/").to_string()),
+            env_var: None,
+            data: None,
+        });
+
+        // Default false used
         assert_eq!(
-            flag_service.enabled("feature_rolled_out", false, None),
+            flag_service.enabled("undefined_flag", false, Some(HashMap::default())),
+            false
+        );
+        // Default true used
+        assert_eq!(
+            flag_service.enabled("undefined_flag", true, Some(HashMap::default())),
             true
         );
+        // Default false, ignored
         assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
-            ),
+            flag_service.enabled("enabled_flag", false, Some(HashMap::default())),
             true
         );
+        // Default true, ignored
         assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from(
-                    [("user_id".to_string(), "1234".to_string()),]
-                ))
-            ),
+            flag_service.enabled("disabled_flag", true, Some(HashMap::default())),
             false
         );
     }
@@ -243,26 +283,17 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature_variant",
-                false,
-                Some(HashMap::from([("env".to_string(), "dev".to_string()),]))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled("feature_variant", false, Some(HashMap::new())),
-            false
-        );
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string()),]))
+        ));
+        assert!(flag_service.enabled(
+            "feature_variant",
+            false,
+            Some(HashMap::from([("env".to_string(), "dev".to_string()),]))
+        ));
+        assert!(!flag_service.enabled("feature_variant", false, Some(HashMap::new())));
     }
 
     #[test]
@@ -283,24 +314,18 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(
-            flag_service.enabled(
-                "feature",
-                false,
-                Some(HashMap::from(
-                    [("user_id".to_string(), "1234".to_string()),]
-                ))
-            ),
-            true
-        );
-        assert_eq!(
-            flag_service.enabled(
-                "feature",
-                true,
-                Some(HashMap::from([("user_id".to_string(), "123".to_string())]))
-            ),
-            false
-        );
+        assert!(flag_service.enabled(
+            "feature",
+            false,
+            Some(HashMap::from(
+                [("user_id".to_string(), "1234".to_string()),]
+            ))
+        ));
+        assert!(!flag_service.enabled(
+            "feature",
+            true,
+            Some(HashMap::from([("user_id".to_string(), "123".to_string())]))
+        ));
     }
 
     #[test]
@@ -319,11 +344,11 @@ mod tests {
             data: None,
         });
 
-        assert_eq!(flag_service.enabled("feature", false, None), true);
+        assert!(flag_service.enabled("feature", false, None));
 
         std::thread::sleep(
             std::time::Duration::from_secs(1) + std::time::Duration::from_millis(100),
         );
-        assert_eq!(flag_service.enabled("feature", false, None), false);
+        assert!(!flag_service.enabled("feature", false, None));
     }
 }
