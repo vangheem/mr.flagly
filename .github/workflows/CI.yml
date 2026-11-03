@@ -77,11 +77,35 @@ jobs:
           name: wheels-macos-${{ matrix.target }}
           path: dist
 
+  tag:
+    name: Tag new version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [linux, windows, macos]
+    permissions:
+      contents: write
+    outputs:
+      release: ${{ steps.tag.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: tag
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            git tag "v$version"
+            git push origin "v$version"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
   release-pypi:
     name: Release to pypi
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, windows, macos]
+    if: ${{ !failure() && !cancelled() && (startsWith(github.ref, 'refs/tags/') || needs.tag.outputs.release == 'true') }}
+    needs: [linux, windows, macos, tag]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -98,8 +122,8 @@ jobs:
   release-crate:
     name: Release crate
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, windows, macos]
+    if: ${{ !failure() && !cancelled() && (startsWith(github.ref, 'refs/tags/') || needs.tag.outputs.release == 'true') }}
+    needs: [linux, windows, macos, tag]
     steps:
       - uses: actions/checkout@v3
       - uses: katyo/publish-crates@v2
