@@ -25,7 +25,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist
-          manylinux: ${{ matrix.target == 'x86' && '2_34' || '2_28' }}
+          manylinux: 2_28
+          docker-options: ${{ matrix.target == 'x86' && '--security-opt seccomp=unconfined' || '' }}
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
