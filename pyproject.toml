@@ -10,12 +10,13 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-# license = "MIT"
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 description = "No nonsense feature flagging system"
 repository = "https://github.com/vangheem/mr.flagly"
 homepage = "https://github.com/vangheem/mr.flagly"
 authors = [
-    {name = "Nathan Van Gheem", email = "vangheem@gmail.com>"},
+    {name = "Nathan Van Gheem", email = "vangheem@gmail.com"},
 ]
 dynamic = ["version"]
